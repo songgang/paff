@@ -24,40 +24,39 @@ g.boundary.s = 3;
 %      cps = [-10 0;  
 %               0 30];
 
-cps = [-10 10 ;  
-        0  0  ];
+cps = [-10 0;  
+        0  10];
 
 
 nb_cps = size(cps, 2);
+g.aff = cell(0);
 
 s = 10;
 
-[A, t] = get_A_and_t(125, [0;0], [0; 0], [1, 1]);
+[A, t] = get_A_and_t(0, [0;0], [20; 0], [1, 1]);
 [L, v] = get_Lv_from_At(A, t);
-g.aff{1}.A = A;
-g.aff{1}.t = t;
-g.aff{1}.L = L;
-g.aff{1}.v = v;
-g.aff{1}.s = s;
+g.aff{end+1}.A = A;
+g.aff{end}.t = t;
+g.aff{end}.L = L;
+g.aff{end}.v = v;
+g.aff{end}.s = s;
 
-
-
-[A, t] = get_A_and_t(125, [0; 0], [0;0], [1,1]);
-[L, v] = get_Lv_from_At(A, t);
-g.aff{2}.A = A;
-g.aff{2}.t = t;
-g.aff{2}.L = L;
-g.aff{2}.v = v;
-g.aff{2}.s = s;
-
-
-% [A, t] = get_A_and_t(45, [0; 20], [0;0], [1,1]);
+% [A, t] = get_A_and_t(0, [0; 0], [20;0], [1,1]);
 % [L, v] = get_Lv_from_At(A, t);
-% g.aff{3}.A = A;
-% g.aff{3}.t = t;
-% g.aff{3}.L = L;
-% g.aff{3}.v = v;
-% g.aff{3}.s = s;
+% g.aff{end+1}.A = A;
+% g.aff{end}.t = t;
+% g.aff{end}.L = L;
+% g.aff{end}.v = v;
+% g.aff{end}.s = s;
+
+
+[A, t] = get_A_and_t(45, [0; 20], [0;-20], [1,1]);
+[L, v] = get_Lv_from_At(A, t);
+g.aff{end+1}.A = A;
+g.aff{end}.t = t;
+g.aff{end}.L = L;
+g.aff{end}.v = v;
+g.aff{end}.s = s;
 
 % [A, t] = get_A_and_t(0, [0; -10], [0;20], [1,1]);
 % [L, v] = get_Lv_from_At(A, t);
@@ -159,7 +158,7 @@ for ii = 1:length(clist)-1
     ind_t2 = clist(ii+1);
     
     vfield = get_stationary_vield_copy_paste(g, xfield_0, cpslist(ind_t1:ind_t2, :, :), tlist(ind_t1:ind_t2));
-    yfield_delta = exp_mapping(vfield, X, Y, tlist(ind_t2)-tlist(ind_t1), 6);
+    yfield_delta = exp_mapping(vfield, X, Y, tlist(ind_t2)-tlist(ind_t1), 10);
     yfield_current = compose_phi(yfield_current, yfield_delta, X, Y);
     
     
@@ -179,7 +178,7 @@ fil=2;
 figure(figno); clf;
 % plot trajectory of control points (cps) using ode solution
 hold on;
-clrs='rgb';
+clrs='gbr';
 for ii = 1:nb_cps
     plot(squeeze(cpslist(:, 1, ii)), squeeze(cpslist(:, 2, ii)), ['-', clrs(mod(ii, length(clrs))+1), '*']);
 end;
