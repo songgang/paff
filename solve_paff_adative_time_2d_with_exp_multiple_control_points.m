@@ -1,11 +1,11 @@
 function solve_paff_adative_time_2d_with_exp
 
-figno = 7;
+figno = 8;
 
-leftB = -60;
-rightB = 60;
-bottomB = -60;
-topB = 60;
+leftB = -40;
+rightB = 40;
+bottomB = -40;
+topB = 40;
 
 dim = 2;
 
@@ -18,77 +18,78 @@ g.boundary.s = 3;
 
 % control point
 % column vector
-cps = [-10 0 10  0;  
-        0 10 0 -10 ];
+% cps = [-10 10 0   0;  
+%         0  0  10 -10 ];
 
-%      cps = [-10;  
-%               0];
+%      cps = [-10 0;  
+%               0 30];
+
+cps = [-10 10 ;  
+        0  0  ];
+
 
 nb_cps = size(cps, 2);
 
-s = 2;
+s = 10;
 
-[A1, t1] = get_A_and_t(0, [-10;0], [30;20], [2, 1]);
-[L1, v1] = get_Lv_from_At(A1, t1);
-g.aff{1}.L = L1;
-g.aff{1}.v = v1;
+[A, t] = get_A_and_t(125, [0;0], [0; 0], [1, 1]);
+[L, v] = get_Lv_from_At(A, t);
+g.aff{1}.A = A;
+g.aff{1}.t = t;
+g.aff{1}.L = L;
+g.aff{1}.v = v;
 g.aff{1}.s = s;
 
 
 
-[A2, t2] = get_A_and_t(0, [10; 0], [-30;0], [2,1]);
-[L2, v2] = get_Lv_from_At(A2, t2);
-g.aff{3}.L = L2;
-g.aff{3}.v = v2;
-g.aff{3}.s = s;
-
-
-[A3, t3] = get_A_and_t(0, [0; 10], [0;-30], [1,1]);
-[L3, v3] = get_Lv_from_At(A3, t3);
-g.aff{2}.L = L3;
-g.aff{2}.v = v3;
+[A, t] = get_A_and_t(125, [0; 0], [0;0], [1,1]);
+[L, v] = get_Lv_from_At(A, t);
+g.aff{2}.A = A;
+g.aff{2}.t = t;
+g.aff{2}.L = L;
+g.aff{2}.v = v;
 g.aff{2}.s = s;
 
-[A2, t2] = get_A_and_t(0, [0; -10], [0;30], [1,1]);
-[L2, v2] = get_Lv_from_At(A2, t2);
-g.aff{4}.L = L2;
-g.aff{4}.v = v2;
-g.aff{4}.s = s;
 
+% [A, t] = get_A_and_t(45, [0; 20], [0;0], [1,1]);
+% [L, v] = get_Lv_from_At(A, t);
+% g.aff{3}.A = A;
+% g.aff{3}.t = t;
+% g.aff{3}.L = L;
+% g.aff{3}.v = v;
+% g.aff{3}.s = s;
 
+% [A, t] = get_A_and_t(0, [0; -10], [0;20], [1,1]);
+% [L, v] = get_Lv_from_At(A, t);
+% g.aff{4}.A = A;
+% g.aff{4}.t = t;
+% g.aff{4}.L = L;
+% g.aff{4}.v = v;
+% g.aff{4}.s = s;
 
+% [A, t] = get_A_and_t(0, [-10;0], [40;0], [2, 1]);
+% [L, v] = get_Lv_from_At(A, t);
+% g.aff{1}.A = A;
+% g.aff{1}.t = t;
+% g.aff{1}.L = L;
+% g.aff{1}.v = v;
+% g.aff{1}.s = s;
+% 
+% [A, t] = get_A_and_t(0, [0; 10], [0;-40], [1,1]);
+% [L, v] = get_Lv_from_At(A, t);
+% g.aff{2}.A = A;
+% g.aff{2}.t = t;
+% g.aff{2}.L = L;
+% g.aff{2}.v = v;
+% g.aff{2}.s = s;
+% 
 
 g.dim = dim;
 g.nb_cps = nb_cps;
 g.cps = cps;
 
-r = 5;
+r = 2;
 
-
-% cps_desired_target = get_affine_on_cps(g);
-% 
-% 
-% function cps_desired_target = get_affine_on_cps(g)
-% 
-% ii = g.nb_cps;
-% cps_desired_target = zeros(g
-% 
-% 
-% figure(1); clf;
-% 
-% hold on;
-% for jj = 1:nb_cps
-%         quiver(cps(1,jj), ...
-%                g.cps(2,jj), ...
-%                cps_desired_target(1,jj)-cps(1,jj), ...
-%                cps_desired_target(1,jj)-cps(1,jj), ...
-%                0, 'c', 'LineWidth', 2);
-% end;
-% hold off;
-% axis equal;
-% 
-% 
-% return;
 
 
 
@@ -140,6 +141,9 @@ if (clist(end) ~= nb_T)
 end;
 
 
+
+
+
 yfield_current = xfield_0;
 
 cpspiecelist = zeros(length(clist), 2, nb_cps);
@@ -155,7 +159,7 @@ for ii = 1:length(clist)-1
     ind_t2 = clist(ii+1);
     
     vfield = get_stationary_vield_copy_paste(g, xfield_0, cpslist(ind_t1:ind_t2, :, :), tlist(ind_t1:ind_t2));
-    yfield_delta = exp_mapping(vfield, X, Y, tlist(ind_t2)-tlist(ind_t1), 4);
+    yfield_delta = exp_mapping(vfield, X, Y, tlist(ind_t2)-tlist(ind_t1), 6);
     yfield_current = compose_phi(yfield_current, yfield_delta, X, Y);
     
     
@@ -175,8 +179,9 @@ fil=2;
 figure(figno); clf;
 % plot trajectory of control points (cps) using ode solution
 hold on;
+clrs='rgb';
 for ii = 1:nb_cps
-    plot(squeeze(cpslist(:, 1, ii)), squeeze(cpslist(:, 2, ii)), '-r*');
+    plot(squeeze(cpslist(:, 1, ii)), squeeze(cpslist(:, 2, ii)), ['-', clrs(mod(ii, length(clrs))+1), '*']);
 end;
 hold off;
 
@@ -193,11 +198,33 @@ for jj = 1:nb_cps
                cpspiecelist(1,2,jj), ...
                cpspiecelist(ii,1,jj)-cpspiecelist(1,1,jj), ...
                cpspiecelist(ii,2,jj)-cpspiecelist(1,2,jj), ...
-               0, 'k', 'LineWidth', 2);
+               0,  clrs(mod(jj, length(clrs))+1), 'LineWidth', 2);
     end;
 end;
 hold off;
+
+
+
+
+% plot desired position
+cps_desired_target = get_affine_on_cps(g);
+hold on;
+for jj = 1:nb_cps
+        quiver(cps(1,jj), ...
+               g.cps(2,jj), ...
+               cps_desired_target(1,jj)-cps(1,jj), ...
+               cps_desired_target(2,jj)-cps(2,jj), ...
+               0, 'c', 'LineWidth', 2);
+end;
+hold off;
 axis equal;
+
+
+
+axis equal;
+
+
+
 
 figure(3); clf;
 plot(clist, 'b*');
@@ -313,20 +340,33 @@ end;
 
 
 v = zeros(g.dim, nb_y);
+
+% weighted by gaussian distance
+if 0
 for ii = 1:g.nb_cps
     sw = zeros(1, nb_y);
     for jj = 1:g.nb_cps
         sw = sw + exp(logwlist(jj, :) - logwlist(ii, :));
     end;
-    
-%     ratio = min(distance to left, right, bottom, top)
-    
-    
     wii = 1 ./ sw;
     viiy = g.aff{ii}.L * y + g.aff{ii}.v*ones(1, nb_y);
     v = v + (ones(g.dim, 1)*wii).*viiy;
 end;
+else
+% scaled by minimum of nearest distances to each trajectory
+[non, idx_cps_idx] = max(logwlist, [], 1);
+for ii = 1:g.nb_cps
+    sw = zeros(1, nb_y);
+    sw = exp(logwlist(ii, :));
+    wii = sw .* (idx_cps_idx == ii);
+    viiy = g.aff{ii}.L * y + g.aff{ii}.v*ones(1, nb_y);
+    v = v + (ones(g.dim, 1)*wii).*viiy;
+end;
 
+end;
+
+
+% velocity is scaled by distance to the fixed boundary
 swratio = -1 * inf(1, nb_y);
 for jj = 1:g.nb_cps
 %         sw = sw + exp(logwboundlist(jj, :) - logwlist(ii, :));
@@ -334,8 +374,7 @@ for jj = 1:g.nb_cps
 end;
 swratio = 1 - exp(swratio);
 v = v.* (ones(g.dim, 1) * swratio);
-% 
-% 
+
 % logw1 = loggpaff(y - p );
 % logw2 = loggpaff(y - q );
 % 
@@ -352,3 +391,9 @@ if isnan(v)
     disp 'haha';
 end;
 
+function cps_desired_target = get_affine_on_cps(g)
+
+cps_desired_target = zeros(g.dim, g.nb_cps);
+for ii = 1:g.nb_cps
+    cps_desired_target(:, ii) = g.aff{ii}.A * g.cps(:, ii) + g.aff{ii}.t;
+end;
