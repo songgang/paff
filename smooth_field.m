@@ -2,7 +2,7 @@ function vsmooth = smooth_field(v, sigma, varargin)
 
 if nargin <= 2
     method = 'Gaussian';
-elseif nargin <= 3
+else
     method = varargin{1};
 end;
 
@@ -36,11 +36,20 @@ switch method
         dim = size(v, 3);
         vsmooth =zeros(size(v));
         vnorm = sqrt(v(:,:,1).^2+v(:,:,2).^2);
+        vnorm(vnorm > 0) = 1;
         for ii = 1:dim
             vsmooth(:, :, ii) = myPreconditionVariational2D(vnorm, v(:, :, ii), sigma);
         end;
         
-
+    case 'PrecondtionVariationalWithBoundary'
+        boundary = varargin{2};
+        v0 = varargin{3};
+        dim = size(v, 3);
+        vsmooth =zeros(size(v));
+        for ii = 1:dim
+            vsmooth(:, :, ii) = myPreconditionVariationalWithBoundary2D(boundary, v(:, :, ii), sigma, v0(:, :, ii));
+        end;
+       
 end;
 
 
@@ -108,7 +117,6 @@ G = G / sum(G(:));
 filtered = imfilter2d(image, G);
 
 
-
 function v1 = myPreconditionVariational2D(w, v, sigma, ddim)
 
 v1 = zeros(size(v));
@@ -119,39 +127,66 @@ se = strel('disk', ceil(sigma+1) );
 
 
 
-
-
-for ii = 1:10
+for ii = 1:5
      g1 = -2 * w .* (v - v1); %  / maxw;
-     g = myGaussianTableLPF2D(g1, sigma);
+     g = myGaussianLPF2D(g1, sigma);
      
      idx_gnonzero = (g~=0);
      if isempty(find(idx_gnonzero))
+         disp 'converge';
          break; % converge
      end;
      
      
      idx_tr1 = idx_tr & idx_gnonzero;
-
      l_tr =  ( v1(idx_tr1) - v(idx_tr1) ) ./ (g(idx_tr1));
+ 
+     % use rbf
+     [y, x] = ind2sub(size(v), find(idx_tr1));
+     [X, Y] = meshgrid(1:size(v, 2), 1:size(v, 1));
+     lrbf = rbf_interpolation(l_tr', x, y, 1, X, Y);
+     % lrbf(idx_tr1) = l_tr * 0.9 + lrbf(idx_tr1) * 0.1;
+     v1 = v1 - lrbf .* g;
      
-%      ldilated = mean(l_tr);
-     
-     l = zeros(size(v));
-     l(idx_tr) = l_tr;
+%      % use dilation
+%      l = zeros(size(v));
+%      l(idx_tr) = l_tr;
 %      ldilated = imdilate(l, se);
-    ldilated = zeros(size(v));
-      ldilated(idx_tr1) = l_tr;
-    
-     
-%      v1 = v1 - ldilated .* g;
+%     v1 = v1 - ldilated .* g;
 
- v1 = v1 - g;
- v1(idx_tr) = g(idx_tr);
      v1(141,124)
      
-     figure; imagesc(v1);
+     figure(100); clf;imagesc(v1);
 end;
 
 return;
+
+
+
+
+
+
+
+
+
+
+
+% x,y are row vectors
+% X, Y are from meshgrid
+% g is a row vector
+
+function f = rbf_interpolation(g, x, y, sigma, X, Y)
+
+nb_cps = size(x, 1);
+nb_y = prod(size(X));
+
+logwlist = zeros(nb_cps, nb_y);
+for ii = 1:nb_cps
+    logwlist(ii,:) = loggpaff(transpose([X(:), Y(:)] - ones(nb_y, 1) * [x(ii), y(ii)]), sigma);
+end;
+
+wlist = exp(logwlist);
+sw = sum(wlist, 1);
+f = g * wlist ./ sw;
+f = reshape(f ,size(X));
 

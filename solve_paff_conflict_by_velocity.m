@@ -70,10 +70,13 @@ for ii = 1:nb_cps
     cpspiecelist(1, :, ii) = cps(:, ii)';
 end;
 
+
 for ii = 1: length(clist)-1
     
     ind_t1 = clist(ii);
     ind_t2 = clist(ii+1);
+    
+    
     
     % vfield = get_stationary_vield_copy_paste(g, xfield_0, cpslist(ind_t1:ind_t2, :, :), tlist(ind_t1:ind_t2));
     % vfield = smooth_field(vfield, g.vfield_smooth_sigma);

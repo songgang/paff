@@ -18,7 +18,7 @@ g.boundary.s = 2;
 
 % test on the Gaussian smoothing for velocity field
 % this is used for decreasing from boundaries
-g.vfield_smooth_sigma = 10;
+g.vfield_smooth_sigma = 20;
 
 % g.s2 is to combine weight
 g.s2 = 1;
@@ -54,8 +54,8 @@ if 0
     nb_T = length(T);
     cpslist = reshape(cpshat, [nb_T, dim, nb_cps]); % [pqhat(:, 3), pqhat(:, 4)];
     g.nb_T = nb_T;
-
-
+    
+    
     % recompute the velocity at each point
     % cpslist: nb_pts * nb_dim * nb_cps (idx_point, u/v, idx_cps)
     cpslist1 = permute(cpslist, [2, 1, 3]);
@@ -63,9 +63,9 @@ if 0
     vcpslist1 = v_paff_ex_pqvec_multibeam(g, nan, reshape(cpslist1, [dim, nb_T*nb_cps]), cpslist2);
     vcpslist = reshape(vcpslist1, [dim, nb_T, nb_cps]);
     vcpslist = permute(vcpslist, [2, 1, 3]);
-
-
-else 
+    
+    
+else
     % use predefined trjactories, assuming they won't conflict
     
     tlist = 0:0.05:1;
@@ -88,34 +88,66 @@ for ii = 1:nb_cps
     cpspiecelist(1, :, ii) = cps(:, ii)';
 end;
 
+
+
+% precompute the decreasing ratio
+% compute the alpha decresing ratio from trajectory
+g.h = 5; % h is the sampling radius of the points in the mask
+g.sigma2 = 30; % local decreasing sigma
+g.sigma1 = 10; % the sigma to combine affine fields, need to be smaller than collision radius
+
+% cpslist1 = permute(cpslist, [1,3,2]);
+% cpslist1 = reshape(cpslist1, [prod(size(cpslist1))/g.dim, g.dim]);
+% maskall = scatter_binary_trajectory_nearest_neighbor(g.boundary.box, cpslist1);
+
+maskall = scatter_binary_trajectory_nearest_neighbor(g.boundary.box, cpslist);
+logalpha = get_log_weight_using_distance_transform_tablegaussian(maskall, g.h, g.sigma2);
+alpha = exp(logalpha);
+
+
+
+
 for ii = 1: length(clist)-1
     
     ind_t1 = clist(ii);
     ind_t2 = clist(ii+1);
     
+    
+    % create velocity field using RBF decreasing function
+    vfield = get_stationary_vield_copy_paste_decreasing(g, xfield_0, cpslist(ind_t1:ind_t2, :, :), alpha);
+    
+    mask_label = scatter_multiple_label_trajectory_after_distance_transform(g, cpslist(ind_t1:ind_t2, :, :));
+    vfield_inside_mask_accurate = get_stationary_vfield_from_labeled_mask(g, xfield_0, mask_label);
+    vfield = smooth_field(vfield_inside_mask_accurate, g.vfield_smooth_sigma, 'PrecondtionVariationalWithBoundary', mask_label, vfield);
+     
+    
     % vfield = get_stationary_vield_copy_paste(g, xfield_0, cpslist(ind_t1:ind_t2, :, :), tlist(ind_t1:ind_t2));
     
-    [vfield_backbone, ind_backbone] = scatter_interploate_trajectory_nearest_neighbor([leftB, rightB, bottomB, topB], cpslist(ind_t1:ind_t2, :, :), vcpslist(ind_t1:ind_t2, :, :));
-    vfield = smooth_field(vfield_backbone, g.vfield_smooth_sigma, 'PrecondtionVariational');
+    % [vfield_backbone, ind_backbone] = scatter_interploate_trajectory_nearest_neighbor([leftB, rightB, bottomB, topB], cpslist(ind_t1:ind_t2, :, :), vcpslist(ind_t1:ind_t2, :, :));
+    % vfield = smooth_field(vfield_backbone, g.vfield_smooth_sigma, 'PrecondtionVariational');
+    
+    
+    
+    
     % replace v on trajectories with exame numbers
     % vfield(ind_backbone) = vfield_backbone(ind_backbone);
     % vfield = vfield_backbone;
     
     
-        q=5;
-        figure;
-        quiver(X(1:q:end,1:q:end), ...
-            Y(1:q:end,1:q:end), ...
-            vfield(1:q:end,1:q:end, 1) / max(vfield(:)) * 4, ...
+    q=2;
+    figure;
+    quiver(X(1:q:end,1:q:end), ...
+        Y(1:q:end,1:q:end), ...
+        vfield(1:q:end,1:q:end, 1) / max(vfield(:)) * 4, ...
         vfield(1:q:end,1:q:end, 2)  / max(vfield(:)) * 4, 1);
     
-        hold on;
-        for kk = 1:nb_cps;
-            plot(cpslist(ind_t1:ind_t2, 1, kk), cpslist(ind_t1:ind_t2, 2, kk), 'r.');
-            % quiver(cpslist(ind_t1:ind_t2, 1, kk), cpslist(ind_t1:ind_t2, 2, kk), vcpslist(ind_t1:ind_t2, 1 ,kk) * 0.02, vcpslist(ind_t1:ind_t2, 2 ,kk) * 0.02, 1, 'r');
-        end;
-        hold off;
-%     
+    hold on;
+    for kk = 1:nb_cps;
+        plot(cpslist(ind_t1:ind_t2, 1, kk), cpslist(ind_t1:ind_t2, 2, kk), 'r.');
+        % quiver(cpslist(ind_t1:ind_t2, 1, kk), cpslist(ind_t1:ind_t2, 2, kk), vcpslist(ind_t1:ind_t2, 1 ,kk) * 0.02, vcpslist(ind_t1:ind_t2, 2 ,kk) * 0.02, 1, 'r');
+    end;
+    hold off;
+    %
     
     
     yfield_delta = exp_mapping(vfield, X, Y, tlist(ind_t2)-tlist(ind_t1), 10);
@@ -140,7 +172,8 @@ figure; clf;
 hold on;
 clrs='gbr';
 for ii = 1:nb_cps
-    plot(squeeze(cpslist(:, 1, ii)), squeeze(cpslist(:, 2, ii)), ['-', clrs(mod(ii, length(clrs))+1), '*']);
+%     plot(squeeze(cpslist(:, 1, ii)), squeeze(cpslist(:, 2, ii)), ['-', clrs(mod(ii, length(clrs))+1), '*']);
+    plot(squeeze(cpslist([1, end], 1, ii)), squeeze(cpslist([1, end], 2, ii)), [clrs(mod(ii, length(clrs))+1), '*'],  'MarkerSize', 10);
 end;
 hold off;
 
@@ -150,17 +183,17 @@ hold off;
 meshplot(X(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil), Y(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil), 'Color', 'g');
 meshplot(yfield_current(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil, 1), yfield_current(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil, 2), 'Color', 'b');
 
-hold on;
-for jj = 1:nb_cps
-    for ii = size(cpspiecelist, 1):size(cpspiecelist, 1)
-        quiver(cpspiecelist(1,1,jj), ...
-            cpspiecelist(1,2,jj), ...
-            cpspiecelist(ii,1,jj)-cpspiecelist(1,1,jj), ...
-            cpspiecelist(ii,2,jj)-cpspiecelist(1,2,jj), ...
-            1,  clrs(mod(jj, length(clrs))+1), 'LineWidth', 3);
-    end;
-end;
-hold off;
+% hold on;
+% for jj = 1:nb_cps
+%     for ii = size(cpspiecelist, 1):size(cpspiecelist, 1)
+%         quiver(cpspiecelist(1,1,jj), ...
+%             cpspiecelist(1,2,jj), ...
+%             cpspiecelist(ii,1,jj)-cpspiecelist(1,1,jj), ...
+%             cpspiecelist(ii,2,jj)-cpspiecelist(1,2,jj), ...
+%             1,  clrs(mod(jj, length(clrs))+1), 'LineWidth', 1);
+%     end;
+% end;
+% hold off;
 
 
 
@@ -182,7 +215,7 @@ hold off;
 
 axis equal;
 
-% 
+%
 % figure(3); clf;
 % plot(clist, tlist(clist), 'b*');
 % title('clist');
