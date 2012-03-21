@@ -31,6 +31,7 @@ clear('fft_K');
 % Compute inverse
 F = real(ifftn(fft_I));
 
-% Take the central part
+% Take the central part 
 shift = floor(size(K)/2);
 F = F(shift(1)+1:end-shift(1),shift(2)+1:end-shift(2));
+

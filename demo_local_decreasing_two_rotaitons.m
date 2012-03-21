@@ -1,7 +1,34 @@
+function demo_local_decreasing_two_rotaitons
+
+
 % simulate a piece of mask by multiple beams of particle trajectory
 
+figure(10); clf;
+demo_two_rotation(Inf, -1);
+print -dpng -f10 'data/two_rotation_inf.png';
 
-figno = 11;
+
+figure(11); clf;
+demo_two_rotation(70);
+print -dpng -f11 'data/two_rotation_70.png';
+
+figure(12); clf;
+demo_two_rotation(30);
+print -dpng -f12 'data/two_rotation_30.png';
+
+figure(13); clf;
+demo_two_rotation(10);
+print -dpng -f13 'data/two_rotation_10.png';
+
+
+function demo_two_rotation(local_decreasing_sigma, varargin)
+
+if nargin >= 2
+    boundary_s = varargin{1}; % do not fix the boundary
+else
+    boundary_s = 1;
+end;
+
 
 leftB = -150;
 rightB = 150;
@@ -23,7 +50,12 @@ g.vfield_smooth_sigma = 0.1;
 % g.s2 is to combine weight
 g.s2 = 1;
 
-g = get_control_point_and_transform_multibeam(g);
+g = get_control_point_and_transform_multibeam_two_rotation(g);
+
+if boundary_s < 0
+    g.boundary.s = boundary_s;
+end;
+
 nb_cps = g.nb_cps;
 cps = g.cps;
 
@@ -93,7 +125,7 @@ end;
 % precompute the decreasing ratio
 % compute the alpha decresing ratio from trajectory
 g.h = 5; % h is the sampling radius of the points in the mask
-g.sigma2 = 60; % local decreasing sigma
+g.sigma2 = local_decreasing_sigma; % local decreasing sigma
 g.sigma1 = 15; % the sigma to combine affine fields, need to be smaller than collision radius
 
 % cpslist1 = permute(cpslist, [1,3,2]);
@@ -115,9 +147,9 @@ for ii = 1: length(clist)-1
     vfield = get_stationary_vield_copy_paste_decreasing(g, xfield_0, cpslist(ind_t1:ind_t2, :, :), alpha);
     % vfield = smooth_field(vfield, 1, 'Gaussian');
     
-    mask_label = scatter_multiple_label_trajectory_after_distance_transform(g, cpslist(ind_t1:ind_t2, :, :));
-    vfield_inside_mask_accurate = get_stationary_vfield_from_labeled_mask(g, xfield_0, mask_label);
-    vfield = smooth_field(vfield_inside_mask_accurate, 20, 'PrecondtionVariationalWithBoundary', mask_label, vfield);
+%     mask_label = scatter_multiple_label_trajectory_after_distance_transform(g, cpslist(ind_t1:ind_t2, :, :));
+%     vfield_inside_mask_accurate = get_stationary_vfield_from_labeled_mask(g, xfield_0, mask_label);
+%     vfield = smooth_field(vfield_inside_mask_accurate, 20, 'PrecondtionVariationalWithBoundary', mask_label, vfield);
       
     
     % vfield = get_stationary_vield_copy_paste(g, xfield_0, cpslist(ind_t1:ind_t2, :, :), tlist(ind_t1:ind_t2));
@@ -163,24 +195,23 @@ for ii = 1: length(clist)-1
 end;
 
 
-pad=0;
+pad=6;
 fil=10;
 
-figure; clf;
 % plot trajectory of control points (cps) using ode solution
 hold on;
 clrs='gbr';
 for ii = 1:nb_cps
 %     plot(squeeze(cpslist(:, 1, ii)), squeeze(cpslist(:, 2, ii)), ['-', clrs(mod(ii, length(clrs))+1), '*']);
-    plot(squeeze(cpslist([1, end], 1, ii)), squeeze(cpslist([1, end], 2, ii)), [clrs(mod(ii, length(clrs))+1), '*'],  'MarkerSize', 10);
+%    plot(squeeze(cpslist([1, end], 1, ii)), squeeze(cpslist([1, end], 2, ii)), [clrs(mod(ii, length(clrs))+1), '*'],  'MarkerSize', 10);
 end;
 hold off;
 
 % meshplot(X(pad*fil:fil:end-pad*fil, pad*fil:fil:end-pad*fil), Y(pad*fil:fil:end-pad*fil, pad*fil:fil:end-pad*fil), 'Color', 'g');
 % meshplot(yfield_current(pad*fil:fil:end-pad*fil, pad*fil:fil:end-pad*fil, 1), yfield_current(pad*fil:fil:end-pad*fil, pad*fil:fil:end-pad*fil, 2), 'Color', 'b');
 
-meshplot(X(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil), Y(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil), 'Color', 'g');
-meshplot(yfield_current(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil, 1), yfield_current(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil, 2), 'Color', 'b');
+% meshplot(X(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil), Y(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil), 'Color', 'g');
+meshplot(yfield_current(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil, 1), yfield_current(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil, 2), 'Color', 'b', 'LineWidth', 2);
 
 % hold on;
 % for jj = 1:nb_cps
@@ -213,9 +244,107 @@ meshplot(yfield_current(pad*fil+1:fil:end-pad*fil, pad*fil+1:fil:end-pad*fil, 1)
 
 
 axis equal;
+axis([leftB, rightB, bottomB, topB]);
 
 %
 % figure(3); clf;
 % plot(clist, tlist(clist), 'b*');
 % title('clist');
+
+
+
+
+
+function g = get_control_point_and_transform_multibeam_two_rotation(g)
+
+
+% control point
+% column vector
+% cps = [-10 10 0   0;
+%         0  0  10 -10 ];
+%      cps = [-10 0;
+%               0 30];
+
+% s is the sigma to computer affine velocity decreasing
+% s can be removed in future implementation
+s = 1;
+dim = 2;
+
+% simulation of two masks
+% mask1 
+[X, Y] = meshgrid(-60:5:-40, -10:5:10);
+cps1 = [X(:)'; Y(:)']; % dim * nb_pts
+ind1 = ones(1, size(cps1, 2));
+cps = cps1;
+ind = ind1;
+
+% % mask2 
+[X, Y] = meshgrid(40:5:60, -10:5:10);
+cps1 = [X(:)'; Y(:)']; % dim * nb_pts
+ind1 = 2 * ones(1, size(cps1, 2));
+cps = [cps, cps1];
+ind = [ind, ind1];
+
+g.cps = cps;
+g.ind = ind;
+
+nb_cps = size(cps, 2);
+
+
+% define the affine transform for two masks
+g.aff = cell(0);
+
+[A, t] = get_A_and_t(40, [-50;0], [0; 0], [1, 1]);
+[L, v] = get_Lv_from_At(A, t);
+g.aff{end+1}.A = A;
+g.aff{end}.t = t;
+g.aff{end}.L = L;
+g.aff{end}.v = v;
+g.aff{end}.s = s;
+
+[A, t] = get_A_and_t(-40, [50; 0], [0; 0], [1,1]);
+[L, v] = get_Lv_from_At(A, t);
+g.aff{end+1}.A = A;
+g.aff{end}.t = t;
+g.aff{end}.L = L;
+g.aff{end}.v = v;
+g.aff{end}.s = s;
+
+
+% [A, t] = get_A_and_t(0, [0; 0], [0;0], [1,1]);
+% [L, v] = get_Lv_from_At(A, t);
+% g.aff{end+1}.A = A;
+% g.aff{end}.t = t;
+% g.aff{end}.L = L;
+% g.aff{end}.v = v;
+% g.aff{end}.s = s;
+
+% [A, t] = get_A_and_t(0, [0; -10], [0;20], [1,1]);
+% [L, v] = get_Lv_from_At(A, t);
+% g.aff{4}.A = A;
+% g.aff{4}.t = t;
+% g.aff{4}.L = L;
+% g.aff{4}.v = v;
+% g.aff{4}.s = s;
+
+% [A, t] = get_A_and_t(0, [-10;0], [40;0], [2, 1]);
+% [L, v] = get_Lv_from_At(A, t);
+% g.aff{1}.A = A;
+% g.aff{1}.t = t;
+% g.aff{1}.L = L;
+% g.aff{1}.v = v;
+% g.aff{1}.s = s;
+%
+% [A, t] = get_A_and_t(0, [0; 10], [0;-40], [1,1]);
+% [L, v] = get_Lv_from_At(A, t);
+% g.aff{2}.A = A;
+% g.aff{2}.t = t;
+% g.aff{2}.L = L;
+% g.aff{2}.v = v;
+% g.aff{2}.s = s;
+%
+
+g.dim = dim;
+g.nb_cps = nb_cps;
+g.cps = cps;
 

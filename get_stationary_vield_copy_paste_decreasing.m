@@ -51,7 +51,7 @@ end;
 
 % fix boundaries
 
-if 1 % boundary condition
+if g.boundary.s > 0 % boundary condition
     logwboundlist = zeros(g.dim*2, nb_y);
     for ii = 1:g.dim
         logwboundlist(ii*2-1, :) = loggpaff(y(ii, :) - g.boundary.box(ii,1), g.boundary.s);

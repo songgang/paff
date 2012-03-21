@@ -7,14 +7,14 @@ nb_label = max(b(:));
 
 w = (b>0);
 
-for ii = 1:10
+for ii = 1:3
      
     
      g1 = -2 * w .* (v - v1); %  / maxw;
      g = myGaussianLPF2D(g1, sigma); % g is soblev gradient 
      
-%      v1 = v1 - g;
-%      continue;
+%        v1 = v1 - 1./(sigma.^2) * g;
+%        continue;
      
      
      idx_gnonzero = (g~=0);
@@ -26,25 +26,28 @@ for ii = 1:10
      idx_tr1 = idx_tr & idx_gnonzero; % points inside trajectories
      
      
-     l = (v1 - v) ./ (g+1);
+     l = (v1 - v) ./ (g + 5);
      
      
      
      if find(isnan(l(idx_tr)))
          disp 'NaN found inside velocities of trajectories  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n';
          % l(isnan(l)) = 1;
-         l = medfilt2(l, [5, 5]); 
-         l(l > 1e3) = 1e3;
-         l(isnan(l)) = 1e3;
-%          la = l;
-%          la(l > 1e5) = NaN;
-%          l = inpaint_nans(la);
+         
+%          l = medfilt2(l, [5, 5]); 
+%          l(l > 1e3) = 1e3;
+%          l(isnan(l)) = 1e3;
+         
+          
+          la = l;
+          la(l > 1e2) = NaN;
+          l = inpaint_nans(la);
      end;
-
-         l(l > 1e3) = 1e3;
-         l = medfilt2(l, [5, 5]); 
-     
-
+% 
+%           l(l > 10) = 10;
+%           l(l < 0) = 0;
+%           l = medfilt2(l, [5, 5]); 
+    
      
      idx_middle = (~idx_tr) & idx_gnonzero;
      nb_middle = sum(idx_middle(:));
@@ -74,9 +77,6 @@ for ii = 1:10
      
      
      
-     
-     
-     
      lrbf = zeros(size(l));
      lrbf(idx_middle) = lmiddle;
      lrbf(idx_tr1) = l(idx_tr1);
@@ -86,8 +86,8 @@ for ii = 1:10
      
      
      
-     figure; clf;imagesc(v1);
-      figure; clf; imagesc(lrbf);
+%     figure; clf;imagesc(v1);
+%     figure; clf; imagesc(l);
 end;
 
 return;

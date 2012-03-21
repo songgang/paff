@@ -22,7 +22,7 @@ cps = cps1;
 ind = ind1;
 
 % % mask2 
-[X, Y] = meshgrid(25:5:35, -10:5:20);
+[X, Y] = meshgrid(40:5:60, -10:5:10);
 cps1 = [X(:)'; Y(:)']; % dim * nb_pts
 ind1 = 2 * ones(1, size(cps1, 2));
 cps = [cps, cps1];
@@ -37,7 +37,7 @@ nb_cps = size(cps, 2);
 % define the affine transform for two masks
 g.aff = cell(0);
 
-[A, t] = get_A_and_t(0, [0;0], [80; 0], [1, 1]);
+[A, t] = get_A_and_t(40, [-50;0], [0; 0], [1, 1]);
 [L, v] = get_Lv_from_At(A, t);
 g.aff{end+1}.A = A;
 g.aff{end}.t = t;
@@ -45,7 +45,7 @@ g.aff{end}.L = L;
 g.aff{end}.v = v;
 g.aff{end}.s = s;
 
-[A, t] = get_A_and_t(0, [0; 0], [0; 50], [1,1]);
+[A, t] = get_A_and_t(-40, [50; 0], [0; 0], [1,1]);
 [L, v] = get_Lv_from_At(A, t);
 g.aff{end+1}.A = A;
 g.aff{end}.t = t;
