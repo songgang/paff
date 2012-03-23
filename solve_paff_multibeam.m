@@ -23,7 +23,7 @@ g.vfield_smooth_sigma = 0.1;
 % g.s2 is to combine weight
 g.s2 = 1;
 
-g = get_control_point_and_transform_multibeam(g);
+g = get_control_point_and_transform_multibeam_Lshape(g);
 nb_cps = g.nb_cps;
 cps = g.cps;
 
@@ -36,7 +36,7 @@ dim = g.dim;
 r1 = 1;
 g.r1 = 1;
 
-r2 = 225;
+r2 = 1000000; %225;
 g.r2 = r2;
 
 % dv is the difference of the velocity when conflicted
@@ -93,8 +93,8 @@ end;
 % precompute the decreasing ratio
 % compute the alpha decresing ratio from trajectory
 g.h = 5; % h is the sampling radius of the points in the mask
-g.sigma2 = 60; % local decreasing sigma
-g.sigma1 = 15; % the sigma to combine affine fields, need to be smaller than collision radius
+g.sigma2 = 20; % local decreasing sigma
+g.sigma1 = 1; % the sigma to combine affine fields, need to be smaller than collision radius
 
 % cpslist1 = permute(cpslist, [1,3,2]);
 % cpslist1 = reshape(cpslist1, [prod(size(cpslist1))/g.dim, g.dim]);
@@ -164,7 +164,7 @@ end;
 
 
 pad=0;
-fil=10;
+fil=2;
 
 figure; clf;
 % plot trajectory of control points (cps) using ode solution
