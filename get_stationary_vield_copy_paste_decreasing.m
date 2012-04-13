@@ -32,8 +32,22 @@ for ii = 1:nb_mask
     sw = zeros(1, nb_y);
     for jj = 1:nb_mask
         sw = sw + exp(logwlist(jj, :) - logwlist(ii, :));
+        
     end;
+    
+    for jj = 1:nb_mask
+        % when logwlist(jj, :) == 0 means the points are inside other masks, 
+        % sw has to be equal to 0 = 0/(0+1) for this case
+        if (ii~=jj)
+            sw(logwlist(jj, :) == 0) = Inf;
+        else
+            sw(logwlist(jj, :) == 0) = 1;
+        end;
+    end;
+    
     wii = 1 ./ sw;
+    
+    
     affL = g.aff{ii}.L;
     affv = g.aff{ii}.v;
     viiy = affL * y + affv*ones(1, nb_y);

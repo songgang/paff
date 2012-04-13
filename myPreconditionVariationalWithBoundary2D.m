@@ -7,7 +7,7 @@ nb_label = max(b(:));
 
 w = (b>0);
 
-for ii = 1:3
+for ii = 1:2
      
     
      g1 = -2 * w .* (v - v1); %  / maxw;
