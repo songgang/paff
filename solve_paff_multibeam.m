@@ -36,11 +36,19 @@ dim = g.dim;
 r1 = 1;
 g.r1 = 1;
 
-r2 = 1000000; %225;
+r2 = 2250; %225;
 g.r2 = r2;
 
 % dv is the difference of the velocity when conflicted
 g.dv = 1;
+
+
+% precompute the decreasing ratio
+% compute the alpha decresing ratio from trajectory
+g.h = 3; % h is the sampling radius of the points in the mask
+g.sigma2 = 25; % local decreasing sigma outside of all trajectory
+g.sigma1 = 100; % the sigma to combine affine fields, need to be smaller than collision radius
+
 
 % solve iniitial ode on p and q
 % pqhat0 = [p; q];
@@ -71,12 +79,25 @@ else
     tlist = 0:0.05:1;
     [cpslist, vcpslist] = predefine_trajectory_multibeam(g, tlist);
     g.nb_T = length(tlist);
+
     
+    % create a cpslist of extended time duration, with t > 1, to "dilate" the
+    % trajector mask in the time 
+    tlist_ex = [tlist, 1.05:0.05:1.1];
+    [cpslist_ex, vcpslist_ex] = predefine_trajectory_multibeam(g, tlist_ex);
+    % create the long-time mask (from t=0:1, or even extended, t=-0.2:1.2)
+    mask_longtime_label_ex = scatter_multiple_label_trajectory_after_distance_transform(g, cpslist_ex(:, :, :));
+    mask_longtime_ex = (mask_longtime_label_ex > 0);
     
 end;
 
 clist = collision_detection_conflicted_velocity_multibeam(g, cpslist, vcpslist);
+clist_ex = collision_detection_conflicted_velocity_multibeam(g, cpslist_ex, vcpslist_ex);
+disp 'collision time points'
 clist
+
+disp 'collision extended time points'
+clist_ex
 
 xfield_0 = cat(3, X, Y);
 yfield_current = xfield_0;
@@ -90,17 +111,16 @@ end;
 
 
 
-% precompute the decreasing ratio
-% compute the alpha decresing ratio from trajectory
-g.h = 5; % h is the sampling radius of the points in the mask
-g.sigma2 = 20; % local decreasing sigma
-g.sigma1 = 1; % the sigma to combine affine fields, need to be smaller than collision radius
 
 % cpslist1 = permute(cpslist, [1,3,2]);
 % cpslist1 = reshape(cpslist1, [prod(size(cpslist1))/g.dim, g.dim]);
 % maskall = scatter_binary_trajectory_nearest_neighbor(g.boundary.box, cpslist1);
 
-maskall = scatter_binary_trajectory_nearest_neighbor(g.boundary.box, cpslist);
+
+% maskall = scatter_binary_trajectory_nearest_neighbor(g.boundary.box, cpslist);
+maskall = scatter_multiple_label_trajectory_after_distance_transform(g, cpslist(:, :, :));
+maskall = maskall > 0;
+% maskall = mask_longtime_ex;
 logalpha = get_log_weight_using_distance_transform_tablegaussian(maskall, g.h, g.sigma2);
 alpha = exp(logalpha);
 
@@ -108,16 +128,79 @@ alpha = exp(logalpha);
 for ii = 1: length(clist)-1
     
     ind_t1 = clist(ii);
-    ind_t2 = clist(ii+1);
-    
+    ind_t2 = clist(ii+1);    
+
     
     % create velocity field using RBF decreasing function
     vfield = get_stationary_vield_copy_paste_decreasing(g, xfield_0, cpslist(ind_t1:ind_t2, :, :), alpha);
-    % vfield = smooth_field(vfield, 1, 'Gaussian');
+
     
+    if 0
+    
+    % smoothing the velocity field in time by averaging the future velocity
+    % field, aiming to removing folding patten. The smoothing region is the
+    % non-critical region 
+
+    % fixed value masks
     mask_label = scatter_multiple_label_trajectory_after_distance_transform(g, cpslist(ind_t1:ind_t2, :, :));
-    vfield_inside_mask_accurate = get_stationary_vfield_from_labeled_mask(g, xfield_0, mask_label);
-    vfield = smooth_field(vfield_inside_mask_accurate, 20, 'PrecondtionVariationalWithBoundary', mask_label, vfield);
+    el = strel('disk', g.h * 5);
+    mask_label_dilate = imdilate(mask_label, el);
+%     [gx, gy] = gradient(mask_label);
+%     mask_label_bounds = (gx.*gx + gy.*gy > 0);
+    mask_noncritical = (mask_label_dilate == 0);
+%    mask_noncritical = mask_noncritical & (1- (mask_label > 0));
+    
+    if ii < length(clist)-1
+        ind_t3 = clist(ii+2);
+        vfield_forward = get_stationary_vield_copy_paste_decreasing(g, xfield_0, cpslist(ind_t2:ind_t3, :, :), alpha);        
+    else % smooth backwards
+        ind_t3 = clist_ex(min(find(clist_ex > clist(end) )));
+        vfield_forward = get_stationary_vield_copy_paste_decreasing(g, xfield_0, cpslist_ex(ind_t2:ind_t3, :, :), alpha);
+    end;
+    
+    
+    
+    q=10;
+    figure(ii+2000); clf;
+    quiver(X(1:q:end,1:q:end), ...
+    Y(1:q:end,1:q:end), ...
+        vfield_forward(1:q:end,1:q:end, 1) , ...
+        vfield_forward(1:q:end,1:q:end, 2) , 1);
+    hold on;
+    for kk = 1:nb_cps;
+    plot(cpslist_ex(ind_t2:ind_t3, 1, kk), cpslist_ex(ind_t2:ind_t3, 2, kk), 'r.');
+    end;
+    hold off;
+    %
+    axis image;
+
+    
+    
+    
+    vfield_1 = vfield(:, :, 1);
+    vfield_2 = vfield(:, :, 2);
+    vfield_forward_1 = vfield_forward(:, :, 1);
+    vfield_forward_2 = vfield_forward(:, :, 2);
+
+    tmpw = 1;
+    vfield_1(mask_noncritical) = tmpw * vfield_1(mask_noncritical) + (1-tmpw) * vfield_forward_1(mask_noncritical);
+    vfield_2(mask_noncritical) = tmpw * vfield_2(mask_noncritical) + (1-tmpw) * vfield_forward_2(mask_noncritical);
+    vfield(:, :, 1) = vfield_1;
+    vfield(:, :, 2) = vfield_2;
+
+    end;
+    
+    
+    % vfield = smooth_field(vfield, 1, 'Gaussian');
+
+    % another way to create vector field:
+    % fix the values inside the mask as the accurate values
+    % and use smoothing / interpolation for the rest of the field
+    
+    
+%     mask_label = scatter_multiple_label_trajectory_after_distance_transform(g, cpslist(ind_t1:ind_t2, :, :));
+%     vfield_inside_mask_accurate = get_stationary_vfield_from_labeled_mask(g, xfield_0, mask_label);
+%     vfield = smooth_field(vfield_inside_mask_accurate, 20, 'PrecondtionVariationalWithBoundary', mask_label, vfield);
       
     
     % vfield = get_stationary_vield_copy_paste(g, xfield_0, cpslist(ind_t1:ind_t2, :, :), tlist(ind_t1:ind_t2));
@@ -133,21 +216,26 @@ for ii = 1: length(clist)-1
     % vfield = vfield_backbone;
     
     
-%     q=2;
-%     figure;
+    q=10;
+    figure(ii+1000); clf;
 %     quiver(X(1:q:end,1:q:end), ...
 %         Y(1:q:end,1:q:end), ...
-%         vfield(1:q:end,1:q:end, 1) / max(vfield(:)) * 4, ...
-%         vfield(1:q:end,1:q:end, 2)  / max(vfield(:)) * 4, 1);
-%     
-%     hold on;
-%     for kk = 1:nb_cps;
-%         plot(cpslist(ind_t1:ind_t2, 1, kk), cpslist(ind_t1:ind_t2, 2, kk), 'r.');
-%         % quiver(cpslist(ind_t1:ind_t2, 1, kk), cpslist(ind_t1:ind_t2, 2, kk), vcpslist(ind_t1:ind_t2, 1 ,kk) * 0.02, vcpslist(ind_t1:ind_t2, 2 ,kk) * 0.02, 1, 'r');
-%     end;
-%     hold off;
-%     %
-%     
+%         vfield(1:q:end,1:q:end, 1) / max(vfield(:)) * 2, ...
+%         vfield(1:q:end,1:q:end, 2)  / max(vfield(:)) * 2, 0);
+
+    quiver(X(1:q:end,1:q:end), ...
+        Y(1:q:end,1:q:end), ...
+        vfield(1:q:end,1:q:end, 1) , ...
+        vfield(1:q:end,1:q:end, 2) , 1);
+
+    hold on;
+    for kk = 1:nb_cps;
+        plot(cpslist(ind_t1:ind_t2, 1, kk), cpslist(ind_t1:ind_t2, 2, kk), 'r.');
+        % quiver(cpslist(ind_t1:ind_t2, 1, kk), cpslist(ind_t1:ind_t2, 2, kk), vcpslist(ind_t1:ind_t2, 1 ,kk) * 0.02, vcpslist(ind_t1:ind_t2, 2 ,kk) * 0.02, 1, 'r');
+    end;
+    hold off;
+    %
+    axis image;
     
     yfield_delta = exp_mapping(vfield, X, Y, tlist(ind_t2)-tlist(ind_t1), 10);
     yfield_current = compose_phi(yfield_current, yfield_delta, X, Y);
@@ -164,15 +252,19 @@ end;
 
 
 pad=0;
-fil=2;
+fil=5;
 
-figure; clf;
+figure(109); clf;
 % plot trajectory of control points (cps) using ode solution
 hold on;
 clrs='gbr';
-for ii = 1:nb_cps
-%     plot(squeeze(cpslist(:, 1, ii)), squeeze(cpslist(:, 2, ii)), ['-', clrs(mod(ii, length(clrs))+1), '*']);
-    plot(squeeze(cpslist([1, end], 1, ii)), squeeze(cpslist([1, end], 2, ii)), [clrs(mod(ii, length(clrs))+1), '*'],  'MarkerSize', 10);
+markers='o*v';
+for jj = 1:length(clist)
+    for ii = 1:nb_cps
+    %     plot(squeeze(cpslist(:, 1, ii)), squeeze(cpslist(:, 2, ii)), ['-', clrs(mod(ii, length(clrs))+1), '*']);
+        plot(squeeze(cpslist(clist(jj), 1, ii)), squeeze(cpslist(clist(jj), 2, ii)), ...
+            [clrs(mod(ii, length(clrs))+1), markers(mod(jj, length(markers))+1)],  'MarkerSize', 10);
+    end;
 end;
 hold off;
 

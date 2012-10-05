@@ -18,14 +18,61 @@ nb_y = prod(size(X));
 nb_mask = length(g.aff);
 
 logwlist = zeros(nb_mask, nb_y);
+
+
+if 0
+% plain way to compute weight using expoential of the distance to each mask
 for ii = 1:nb_mask;
     idx = find(g.ind == ii);
-    maskii = scatter_binary_trajectory_nearest_neighbor(g.boundary.box, cpslist(:, :, idx));
+    % maskii = scatter_binary_trajectory_nearest_neighbor(g.boundary.box, cpslist(:, :, idx));
+    maskii = scatter_single_label_trajectory_after_distance_transform(g, cpslist(:, :, idx));
     % a1 = get_log_weight_using_distance_transform_tablegaussian(maskii, g.h, g.sigma1);
-    a1 = get_log_weight_using_distance_transform_tablelaplacian(maskii, g.h, g.sigma1);
+    a1 = get_log_weight_using_distance_transform_tablelaplacian(maskii, 0, g.sigma1);
+    % a1 = get_log_weight_using_distance_transform_tablelaplacian(maskii, 0, g.sigma1);
     
     logwlist(ii, :) = a1(:);
 end;
+
+else
+
+% test a complicated way of determine weight should be determined by which
+% mask 
+
+dist_per_mask = zeros(nb_yaxis, nb_xaxis, nb_mask);
+for ii = 1:nb_mask
+    idx = find(g.ind == ii);
+    maskii = scatter_single_label_trajectory_after_distance_transform(g, cpslist(:, :, idx));
+    d = bwdist(maskii);
+    d = max(0, d-g.h);
+    dist_per_mask(:, :, ii) = d;
+end;
+% divide influence region by finding the minimum distance
+[void, influence_region] = min(dist_per_mask, [], 3);    
+% for each influence region, computing SIGNED distance transform, such
+% distance is used to compute the weight: w
+% insdie mask and far from boundary: w = 1
+% insdie mask and close to boundary: W = 1 to 0.5
+% outside mask and close to boundary: w = 0.5 to 0
+% outside mask and far from boundary: w = 0
+for ii = 1:nb_mask
+    current_region_mask = (influence_region == ii); 
+    dout = bwdist(current_region_mask);
+    din = bwdist(1 - current_region_mask);
+    
+    a1(din > sqrt(g.sigma1)) = 1;
+    a1(din <= sqrt(g.sigma1) & din > 0) =  din(din <= sqrt(g.sigma1)  & din > 0) / sqrt(g.sigma1) * 0.5 + 0.5;
+    a1(dout <= sqrt(g.sigma1) & dout > 0) =  0.5 - dout(dout <= sqrt(g.sigma1)  & dout > 0) / sqrt(g.sigma1) * 0.5;
+    a1(dout > sqrt(g.sigma1)) =  0;
+    
+    % make sure inside each trajectory the weight is always 1
+    a1(dist_per_mask(:, :, ii) == 0) = 1;
+    
+    logwlist(ii, :) = log(a1(:));
+end;
+
+end;
+
+
 
 v = zeros(g.dim, nb_y);
 for ii = 1:nb_mask
@@ -53,7 +100,7 @@ for ii = 1:nb_mask
     viiy = affL * y + affv*ones(1, nb_y);
     v = v + (ones(g.dim, 1)*wii).*viiy;
     
-    % figure; imagesc(-150:150, -150:150, reshape(wii, [301, 301])); axis image; axis xy;
+%     figure; imagesc(-150:150, -150:150, reshape(wii, [301, 301])); axis image; axis xy;
 end;
 
 

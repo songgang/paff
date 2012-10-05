@@ -3,7 +3,7 @@ function clist = collision_detection_conflicted_velocity_multibeam(g, cpslist, v
 % if two trajectories are very close AND the velocities on close points are
 % not equal (within a threshold), then it is conflict
 
-nb_T = g.nb_T;
+nb_T = size(cpslist, 1); %sg.nb_T;
 nb_cps = g.nb_cps;
 r1 = g.r1; % intra-beam distance
 r2 = g.r2; % inter-beam distance

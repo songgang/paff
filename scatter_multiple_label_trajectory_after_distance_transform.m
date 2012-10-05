@@ -34,6 +34,11 @@ for ii = 1:nb_mask
     
     maskfill = (bwdist(mask) <= g.h);
     
+    % erode the boundary of maskfill
+    se = strel('disk', g.h);
+    maskfill = imerode(maskfill, se);
+
+    
     mask_label(maskfill > 0) = ii;
 
 end;

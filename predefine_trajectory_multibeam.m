@@ -1,4 +1,5 @@
 function [cpslist, vcpslist] = predefine_trajectory_multibeam(g, tlist)
+% tlist must start from zero
 
 cps = g.cps;
 nb_cps = g.nb_cps;
